@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Báo cáo sản xuất hằng ngày</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --ink:#2A2118; --muted:#8A7E6A; --line:#E7DECB; --line-2:#F0E9DA;
+    --bg:#F6F2EA; --card:#FFFFFF; --amber:#E8A33D; --amber-deep:#C46A1B;
+    --green:#2E7D5B; --green-bg:#E7F2EC; --red:#C0492F;
+    --shadow:0 1px 0 rgba(42,33,24,.04), 0 8px 24px -16px rgba(42,33,24,.35);
+    --tg-bg:var(--bg); --tg-text:var(--ink);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--tg-bg); color:var(--tg-text);
+    font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;
+    padding-bottom:92px;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px}
+
+  /* ---------- Header ---------- */
+  header{position:sticky;top:0;z-index:30;background:var(--ink);color:#FBF6EC;
+    border-bottom:3px solid var(--amber)}
+  .head-in{max-width:560px;margin:0 auto;padding:11px 14px 12px;
+    display:flex;align-items:center;gap:12px}
+  .stamp{flex:0 0 auto;width:40px;height:40px;border:2px solid var(--amber);
+    border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px;
+    line-height:1;text-align:center;color:var(--amber);transform:rotate(-3deg)}
+  .head-t{flex:1;min-width:0}
+  .head-t h1{margin:0;font-size:15.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+  .head-t p{margin:2px 0 0;font-size:11.5px;color:#C9BCA4;letter-spacing:.2px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .head-clock{flex:0 0 auto;text-align:right}
+  .head-clock .t{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  .head-clock .d{font-size:10.5px;color:#C9BCA4}
+
+  /* reporter strip */
+  .who{background:#fff;border-bottom:1px solid var(--line)}
+  .who-in{max-width:560px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:9px;
+    font-size:13px}
+  .who . av{width:24px;height:24px;border-radius:50%;background:var(--amber);color:#3A2A12;
+    display:grid;place-items:center;font-weight:800;font-size:12px;flex:0 0 auto}
+  .who .lbl{color:var(--muted)}
+  .who .nm{font-weight:700;color:var(--ink)}
+
+  /* ---------- View: danh mục ---------- */
+  .vtitle{font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--amber-deep);padding:16px 2px 9px}
+  .cats{display:flex;flex-direction:column;gap:9px}
+  .cat{background:var(--card);border:1.5px solid var(--line);border-radius:13px;
+    box-shadow:var(--shadow);padding:14px 14px;display:flex;align-items:center;gap:13px;
+    cursor:pointer;transition:.12s}
+  .cat:active{transform:scale(.99);border-color:var(--amber)}
+  .cat .ic{flex:0 0 auto;width:44px;height:44px;border-radius:11px;background:#FBF3E4;
+    display:grid;place-items:center;font-size:22px}
+  .cat .ct{flex:1;min-width:0}
+  .cat .ct .n{font-size:14.5px;font-weight:700;line-height:1.25}
+  .cat .ct .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .cat .badge{flex:0 0 auto;background:var(--green-bg);color:var(--green);font-weight:800;
+    font-size:11.5px;padding:3px 9px;border-radius:999px}
+  .cat .chev{flex:0 0 auto;color:var(--line);font-size:22px}
+
+  /* ---------- View: sản phẩm ---------- */
+  .subbar{position:sticky;top:67px;z-index:20;background:var(--tg-bg);padding:12px 0 8px}
+  .back{display:flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;
+    color:var(--amber-deep);font:inherit;font-weight:700;font-size:14px;padding:2px 0 10px}
+  .back svg{flex:0 0 auto}
+  .search{position:relative}
+  .search input{width:100%;padding:11px 14px 11px 40px;border:1.5px solid var(--line);
+    border-radius:12px;background:var(--card);font:inherit;font-size:15px;color:var(--ink)}
+  .search input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(232,163,61,.15)}
+  .search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%)}
+  .search .clr{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;
+    border:none;background:var(--line-2);border-radius:50%;color:var(--muted);font-size:16px;display:none}
+
+  .listmeta{display:flex;justify-content:space-between;align-items:baseline;
+    padding:2px 2px 8px;font-size:12px;color:var(--muted)}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+    padding:12px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.12s}
+  .row:active{transform:scale(.995)}
+  .row.active{border-color:var(--amber);background:#FFFCF5;box-shadow:0 0 0 1px var(--amber) inset}
+  .r-info{flex:1;min-width:0}
+  .r-name{font-size:14px;font-weight:600;color:var(--ink);line-height:1.3}
+  .r-sub{font-size:11.5px;color:var(--muted);margin-top:4px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--line-2);padding:1px 6px;
+    border-radius:5px;font-size:11px;color:var(--amber-deep);font-weight:700}
+  .r-val{font-family:ui-monospace,Menlo,monospace;background:var(--green-bg);color:var(--green);
+    padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700}
+  .r-act{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;
+    background:#FCFAF5;border:1.5px solid var(--line);color:var(--amber-deep);font-size:22px;font-weight:600}
+  .row.active .r-act{background:var(--amber);border-color:var(--amber);color:#3A2A12}
+
+  .empty{text-align:center;padding:40px 16px;color:var(--muted)}
+  .empty .big{font-size:30px;margin-bottom:8px}
+
+  /* ---------- Thanh gửi ---------- */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--card);
+    border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 24px -18px rgba(42,33,24,.5)}
+  .bar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .bar-sum{flex:1;min-width:0}
+  .bar-sum .a{font-weight:800;font-size:15px}
+  .bar-sum .b{font-size:11.5px;color:var(--muted)}
+  .btn{border:none;border-radius:12px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;
+    letter-spacing:.2px;padding:13px 20px}
+  .btn-primary{background:var(--amber);color:#3A2A12}
+  .btn-primary:active{background:var(--amber-deep);color:#fff}
+  .btn-primary:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+  .btn-ghost{background:var(--card);border:1.5px solid var(--line);color:var(--ink)}
+
+  /* ---------- Overlay chung ---------- */
+  .ov{position:fixed;inset:0;z-index:50;background:rgba(30,22,12,.45);display:none;
+    align-items:flex-end;justify-content:center}
+  .ov.show{display:flex}
+  .sheet{width:100%;max-width:560px;max-height:94vh;background:var(--bg);
+    border-radius:18px 18px 0 0;display:flex;flex-direction:column;animation:up .2s ease}
+  @keyframes up{from{transform:translateY(26px);opacity:.7}to{transform:none;opacity:1}}
+  .grip{width:38px;height:4px;background:var(--line);border-radius:3px;margin:8px auto 4px}
+  .sheet-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+    padding:4px 16px 10px}
+  .sheet-title h2{margin:0;font-size:15px;font-weight:800;line-height:1.3}
+  .sheet-title .x{flex:0 0 auto;border:none;background:var(--line-2);width:30px;height:30px;
+    border-radius:50%;font-size:17px;color:var(--muted);cursor:pointer}
+
+  /* ---------- Entry sheet (nhập sản lượng) ---------- */
+  .ent{padding:0 14px}
+  .ent .pname{font-size:11px;color:var(--muted)}
+  .uline{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);
+    border-radius:12px;padding:10px 12px;margin-bottom:9px}
+  .uline.act{border-color:var(--amber);box-shadow:0 0 0 3px rgba(232,163,61,.15)}
+  .uline .ulbl{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--muted);width:34px}
+  .uval{flex:1;min-width:0;font-family:ui-monospace,Menlo,monospace;font-size:22px;font-weight:800;
+    color:var(--ink);min-height:28px;display:flex;align-items:center;letter-spacing:.5px}
+  .uval .ph{color:var(--line);font-weight:600}
+  .uval .car{display:inline-block;width:2px;height:22px;background:var(--amber);margin-left:1px;
+    animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .uunit{flex:0 0 auto}
+  .uunit select{appearance:none;border:1.5px solid var(--line);border-radius:9px;background:#FCFAF5;
+    font:inherit;font-weight:700;font-size:14px;color:var(--amber-deep);padding:8px 26px 8px 11px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C46A1B' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 9px center}
+  .uunit select:focus{outline:none;border-color:var(--amber)}
+  .rm2{border:none;background:none;color:var(--red);font-size:19px;cursor:pointer;padding:0 2px;flex:0 0 auto}
+  .add2{border:1.5px dashed var(--line);background:none;color:var(--amber-deep);font:inherit;
+    font-weight:700;font-size:13px;border-radius:11px;padding:10px;width:100%;margin-bottom:4px;cursor:pointer}
+  .hint{font-size:11.5px;color:var(--muted);text-align:center;padding:2px 0 8px}
+
+  /* numpad */
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 14px 4px}
+  .pad button{height:54px;border:1.5px solid var(--line);background:#fff;border-radius:12px;
+    font:inherit;font-size:23px;font-weight:700;color:var(--ink);cursor:pointer;
+    display:grid;place-items:center;-webkit-user-select:none;user-select:none}
+  .pad button:active{background:var(--line-2)}
+  .pad .k-del{color:var(--red);font-size:21px}
+  .pad .k-comma{color:var(--amber-deep)}
+  .ent-foot{padding:10px 14px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px}
+  .ent-foot .btn{flex:1}
+  .ent-foot .btn-primary{flex:1.6}
+
+  /* ---------- Review sheet (phiếu) ---------- */
+  .slip{margin:0 14px;background:#FFFEFB;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .slip-top{height:9px;background:repeating-linear-gradient(90deg,var(--amber) 0 7px,transparent 7px 14px);opacity:.5}
+  .slip-meta{padding:11px 14px;border-bottom:1px dashed var(--line);font-size:12.5px;display:grid;gap:3px}
+  .slip-meta b{color:var(--muted);font-weight:600}
+  .slip-body{overflow-y:auto}
+  .si{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px dashed var(--line-2)}
+  .si:last-child{border-bottom:none}
+  .si-n{flex:1;min-width:0;font-size:13px;line-height:1.3}
+  .si-n .c{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--amber-deep);font-weight:700}
+  .si-q{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:13.5px;color:var(--ink);
+    white-space:nowrap;text-align:right}
+  .si-rm{border:none;background:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 4px;flex:0 0 auto}
+  .slip-tot{padding:11px 14px;display:flex;justify-content:space-between;border-top:2px solid var(--ink);
+    font-weight:800;font-size:13.5px}
+  .note-fld{margin:11px 14px 0}
+  .note-fld textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+    font:inherit;font-size:14px;resize:vertical;min-height:46px;background:#FCFAF5;color:var(--ink)}
+  .note-fld textarea:focus{outline:none;border-color:var(--amber);background:#fff}
+  .sheet-foot{padding:14px;display:flex;gap:10px}
+  .sheet-foot .btn{flex:1}
+
+  .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%) translateY(10px);
+    background:var(--ink);color:#FBF6EC;padding:11px 18px;border-radius:11px;font-size:13.5px;
+    font-weight:600;z-index:80;opacity:0;pointer-events:none;transition:.25s;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.ok{background:var(--green)} .toast.err{background:var(--red)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="stamp">SX<br>HC</div>
+    <div class="head-t">
+      <h1>Báo cáo sản xuất</h1>
+      <p id="hsub">Phiếu sản lượng · Hải Châu</p>
+    </div>
+    <div class="head-clock">
+      <div class="t" id="clk-t">--:--</div>
+      <div class="d" id="clk-d">&nbsp;</div>
+    </div>
+  </div>
+</header>
+<div class="who">
+  <div class="who-in">
+    <div class="av" id="av">?</div>
+    <span class="lbl">Người báo cáo:</span>
+    <span class="nm" id="who-nm">(Tên Telegram của bạn)</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- VIEW 1: chọn loại báo cáo -->
+  <div id="view-cats">
+    <div class="vtitle">Chọn loại báo cáo</div>
+    <div class="cats" id="cats"></div>
+  </div>
+
+  <!-- VIEW 2: danh sách sản phẩm -->
+  <div id="view-list" style="display:none">
+    <div class="subbar">
+      <button class="back" id="back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Loại báo cáo
+      </button>
+      <div class="search">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#8A7E6A" stroke-width="2"/><path d="M20 20l-3.2-3.2" stroke="#8A7E6A" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="search" id="q" placeholder="Tìm trong nhóm này..." autocomplete="off">
+        <button class="clr" id="clr">×</button>
+      </div>
+    </div>
+    <div class="listmeta">
+      <span id="lm-cat">—</span>
+      <span id="lm-sel">Đã nhập: 0</span>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+</div>
+
+<!-- Thanh gửi -->
+<div class="bar">
+  <div class="bar-in">
+    <div class="bar-sum">
+      <div class="a" id="bar-a">Chưa nhập sản lượng</div>
+      <div class="b" id="bar-b">Chọn loại báo cáo để bắt đầu</div>
+    </div>
+    <button class="btn btn-primary" id="open-review" disabled>Xem phiếu</button>
+  </div>
+</div>
+
+<!-- Sheet nhập sản lượng -->
+<div class="ov" id="ov-ent">
+  <div class="sheet">
+    <div class="grip"></div>
+    <div class="sheet-title">
+      <div><div class="ent pname" id="ent-code"></div><h2 id="ent-name"></h2></div>
+      <button class="x" id="ent-x">×</button>
+    </div>
+    <div class="ent">
+      <div class="uline act" id="ul1" data-f="1">
+        <div class="ulbl">SL 1</div>
+        <div class="uval" id="uv1"></div>
+        <div class="uunit"><select id="us1"></select></div>
+      </div>
+      <div class="uline" id="ul2" data-f="2" style="display:none">
+        <div class="ulbl">SL 2</div>
+        <div class="uval" id="uv2"></div>
+        <div class="uunit"><select id="us2"></select></div>
+        <button class="rm2" id="rm2" aria-label="Bỏ đơn vị 2">×</button>
+      </div>
+      <button class="add2" id="add2">+ Thêm đơn vị tính (vd: 1 thùng + 2 gói)</button>
+    </div>
+    <div class="hint">Chạm vào ô SL để chọn, dùng bàn phím số bên dưới</div>
+    <div class="pad" id="pad"></div>
+    <div class="ent-foot">
+      <button class="btn btn-ghost" id="ent-clear">Xóa số</button>
+      <button class="btn btn-primary" id="ent-save">Lưu sản lượng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet phiếu -->
+<div class="ov" id="ov-rev">
+  <div class="sheet">
+    <div class="grip"></div>
+    <div class="sheet-title"><h2>Phiếu sản lượng</h2><button class="x" id="rev-x">×</button></div>
+    <div class="slip">
+      <div class="slip-top"></div>
+      <div class="slip-meta" id="slip-meta"></div>
+      <div class="slip-body" id="slip-body"></div>
+      <div class="slip-tot"><span>Tổng số mặt hàng</span><span id="slip-tot">0</span></div>
+    </div>
+    <div class="note-fld">
+      <textarea id="f-note" placeholder="Ghi chú (sự cố, ngừng máy, hao hụt...) — không bắt buộc"></textarea>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-ghost" id="rev-back">Quay lại</button>
+      <button class="btn btn-primary" id="send" style="flex:1.5">Gửi báo cáo</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CATALOG = [{"code":"KHAY1","name":"Khay Bánh Lương Khô 5*","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY2","name":"Khay Bánh Lương Khô Thường","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY3","name":"Khay Bánh Lương Khô Mini - Óc Chó","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY4","name":"Khay Bánh Lương Khô Mini - Hạt Điều","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY5","name":"Khay Bánh Lương Khô Mini - Ngũ Cốc","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY6","name":"Khay Bánh Lương Khô Mini - Gạo Lứt","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY7","name":"Khay Bánh Lương Khô Mini - Choco Chip","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY8","name":"Khay Bánh Lương Khô Mini - Hạnh nhân","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY9","name":"Khay Bánh Lương Khô Mini - Gạo nếp rong biển","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY10","name":"Khay Bánh Lương Khô Mini - Matcha","unit":"Khay","cat":"BTP – Khay"},{"code":"KHAY11","name":"Khay Bánh Lương Khô Mini - Cà phê","unit":"Khay","cat":"BTP – Khay"},{"code":"BTP01","name":"Bánh LK 5* ( TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP02","name":"Bánh LK thường ( TP) (Tải 15kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP03","name":"Bánh Mè Giòn ( Chạy Bao Gói Màng Tolyno Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP04","name":"Bánh hạnh nhân hạt điều (Chạy bao gói Màng Tolyno Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP05","name":"Bánh lotus 360g (Chạy bao gói màng Bạc)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP06","name":"Bánh khoai tây (Chạy bao gói màng Tolyno Xanh)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP07","name":"Bánh Bơ Sữa (Chạy Bao Gói Màng Tolyno Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP08","name":"Bánh quy hạt điều 405 (Chạy bao gói màng Bạc)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP09","name":"Bánh BƠ SỮA 410 (BG màng Bảo Châu - Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP10","name":"Bánh CÀ PHÊ (BG màng Bảo Châu - Xanh Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP11","name":"Bánh MÈ GIÒN 410 (BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP12","name":"Bánh LK mini Beli (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP13","name":"Bánh LK 5* phun dầu (TP)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP14","name":"Bánh kẹp kem HỘP SẮT (Chạy BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP15","name":"Bánh Socola HỘP SẮT ( BG màng Bảo Châu - Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP16","name":"Bánh yến mạch HỘP SẮT (BG màng Bảo Châu - Xanh Rêu)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP17","name":"Bánh nho HỘP SẮT (BG màng Bảo Châu - Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP18","name":"Bánh Quy Cam BTP (Tải 10kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP19","name":"Bánh khoai tây vị bò bít tết (BG màng Bít Tết - Xanh)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP20","name":"Bánh khoai tây nguyên vị (BG màng Nguyên Vị - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP21","name":"Lương khô mini Gạo Lứt (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP22","name":"Lương khô mini Hạt Điều (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP23","name":"Lương khô mini Ngũ Cốc (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP24","name":"Lương khô mini Hạt Óc Chó (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP25","name":"Bánh Socola (BG màng Bảo Châu - Xanh Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP26","name":"Bánh ngũ cốc (BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP27","name":"Bánh xoài (BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP28","name":"Bánh việt quất (BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP29","name":"Bánh cốm lứt (BG màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP30","name":"Bánh lotus 360g (BG màng Bảo Châu Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP31","name":"Bánh lotus 360g (BG màng Bảo Châu Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP32","name":"Bánh lotus 360g (BG màng Tolyno màu Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP33","name":"Bánh LK thường có trứng (TP) (Tải 15kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP34","name":"Bánh LK mini Socola (TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP35","name":"Lương khô mini Choco Chip (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP36","name":"Bánh Gấc (BG màng Bảo Châu - Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP37","name":"Bánh quy II (Bánh quy cân 5 sao)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP38","name":"Lương khô mini Gạo Nghiền (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP39","name":"Lương khô mini Matcha (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP40","name":"Lương khô mini Cà Phê (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP41","name":"Lương khô mini Hạnh Nhân (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP42","name":"Lương khô mini Gạo Nếp Rong Biển (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP43","name":"Bánh khoai tây (BG màng Bảo Châu - xanh rêu)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP44","name":"Bánh mè giòn (BG màng Bảo Châu - vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP45","name":"Bánh ngô (BG màng Bảo Châu - vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP46","name":"Bánh hạnh nhân hạt điều (BG Màng Bảo Châu - Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP47","name":"Bánh kẹp kem vani (BG Màng Bảo Châu - Vàng)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP48","name":"Bánh LK mini Matcha (TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP49","name":"Bánh LK mini Cà Phê (TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP50","name":"Bánh quy hạt điều 405 (BG màng Bảo Châu - Đỏ)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP51","name":"Bánh kẹp kem vani (BG Màng Bảo Châu - Xanh Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP52","name":"Bánh kẹp kem socola (BG Màng Bảo Châu - Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP53","name":"Bánh lotus 360g (BG màng Bảo Châu Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP54","name":"Bánh ngũ cốc (BG màng Bảo Châu - Tím)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP55","name":"Lương khô mini Hải Châu Hạnh Nhân (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP56","name":"Lương khô mini Hải Châu Gạo Nếp Rong Biển (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP57","name":"Lương khô mini Hải Châu Matcha (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP58","name":"Lương khô mini Hải Châu Choco Chip (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP59","name":"Lương khô mini Hải Châu Hạt Điều (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP60","name":"Lương khô mini Hải Châu Gạo Lứt (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP61","name":"Lương khô mini Hải Châu Ngũ Cốc (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP62","name":"Lương khô mini Hải Châu Hạt Óc Chó (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP63","name":"Lương khô mini Hải Châu Cà Phê (BG)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP64","name":"Bánh LK mini Ngũ Cốc (TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BTP65","name":"Bánh LK mini các loại khác (TP) (Tải 16kg)","unit":"kg","cat":"BTP – Bánh các loại"},{"code":"BC01","name":"Bột canh I - ốt 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC02","name":"Bột canh thường 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC03","name":"Bột canh IHC 3 tốt 180g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC04","name":"Bột canh IHC 3 tốt i-ốt 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC05","name":"Bột canh IHC 3 tốt thường 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC06","name":"Bột canh IHC I-ốt 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC07","name":"Bột canh IHC thường 190g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC15","name":"Bột canh thịt 300g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC09","name":"Bột canh IHC 3 tốt 900g *10 gói","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"BC10","name":"Muối hạt sạch Hải Châu 800g","unit":"Thùng","cat":"Gia vị (Bột canh)"},{"code":"LK52","name":"Lương khô cao cấp 5* (600g x 6 Hộp)","unit":"Thùng","cat":"Lương khô"},{"code":"LK54","name":"Lương khô tổng hợp 55g","unit":"Thùng","cat":"Lương khô"},{"code":"LK55","name":"Lương khô đậu xanh 55g","unit":"Thùng","cat":"Lương khô"},{"code":"LK56","name":"Lương khô ca cao 55g","unit":"Thùng","cat":"Lương khô"},{"code":"LK57","name":"Lương khô Mini chocochip Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK32","name":"Lương khô Mini hạt điều Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK33","name":"Lương khô Mini gạo lứt Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK34","name":"Lương khô Mini ngũ cốc Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK35","name":"Lương khô Mini hạt óc chó Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK58","name":"Lương khô Mini hạnh nhân Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK59","name":"Lương khô Mini matcha Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK60","name":"Lương khô Mini cà phê Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK61","name":"Lương khô Mini gạo nếp rong biển Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"LK36","name":"Lương khô Mini Mix vị Tolyno 280g*24 gói","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini chocochip Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạt điều Tolyno  350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini gạo lứt Tolyno  350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini ngũ cốc Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạt óc chó Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạnh nhân Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini matcha Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini cà phê Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini gạo nếp rong biển Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini Mix vị Tolyno 350g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini chocochip Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạt điều Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini gạo lứt Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini ngũ cốc Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạt óc chó Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini hạnh nhân Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini matcha Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini cà phê Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini gạo nếp rong biển Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"","name":"Lương khô Mini Mix vị Tolyno 400g","unit":"Thùng","cat":"Lương khô"},{"code":"LK12","name":"LK Mini Hạt Điều 140g","unit":"Thùng","cat":"Lương khô"},{"code":"LK13","name":"LK Mini Gạo lứt 140g","unit":"Thùng","cat":"Lương khô"},{"code":"LK20","name":"LK Mini Ngũ cốc 140g","unit":"Thùng","cat":"Lương khô"},{"code":"LK21","name":"LK Mini Hạt óc chó 140g","unit":"Thùng","cat":"Lương khô"},{"code":"BQ06","name":"Bánh hộp Lotus quy bơ hạt điều 405g (túi xách)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ04","name":"Bánh hộp Lotus 360g (túi xách)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ31","name":"Bánh hộp Tolyno Royal 410g (túi xách)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ07","name":"Bánh hộp lốc Tolyno Bơ Sữa 41g (lốc 4x12)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ51","name":"Bánh hộp Tolyno Mè Giòn 250g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ52","name":"Bánh hộp Tolyno Gấc Giòn 250g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ53","name":"Bánh hộp Tolyno Khoai Tây - Đỏ 250g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ54","name":"Bánh hộp Tolyno Khoai Tây - Xanh 250g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ21","name":"Bánh hộp Tolyno Bơ Sữa 265g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ60","name":"Bánh hộp Tolyno mè giòn Đèn Lồng 360g ( Túi xách )","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ61","name":"Bánh hộp Tolyno HNHĐ Đèn Lồng 360g ( Túi xách )","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ62","name":"Bánh hộp Tolyno khoai tây Đèn Lồng 360g ( Túi xách )","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ63","name":"Bánh hộp Tolyno Mè Giòn 310g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ64","name":"Bánh hộp Tolyno Khoai tây 310g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ65","name":"Bánh hộp Tolyno HNHĐ 310g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ17","name":"Bánh hộp Tolyno Mè giòn - Xanh 155g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ16","name":"Bánh hộp Tolyno Mè giòn - Vàng 155g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ19","name":"Bánh hộp Tolyno Bơ sữa 155g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ18","name":"Bánh hộp Tolyno Khoai tây 155g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ70","name":"Bánh hộp Lotus Thịnh Vượng 110g","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ48","name":"Bánh Flora 150g (Xanh lá)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ46","name":"Bánh Flora 150g (Vàng)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ45","name":"Bánh Flora 150g (Xanh tím)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ47","name":"Bánh Flora 150g (Trắng)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ44","name":"Bánh Flora 150g (Đỏ)","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ73","name":"Bánh quy bơ Tolyno 350g - Đỏ","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ74","name":"Bánh quy bơ Tolyno 350g - Vàng","unit":"Thùng","cat":"Bánh hộp giấy"},{"code":"BQ02","name":"Quy cam 120g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ25","name":"Bánh bạc vuông 160g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ71","name":"Bánh khoai tây nguyên vị 220g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ72","name":"Bánh khoai tây vị bít tết 220g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ56","name":"Bánh gói Tolyno Mè giòn 220g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ57","name":"Bánh gói Tolyno Gấc giòn 220g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ58","name":"Bánh gói Tolyno Bắp giòn 220g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ59","name":"Bánh gói Que Tolyno 80g","unit":"Thùng","cat":"Bánh gói"},{"code":"BQ75","name":"Bánh hộp thiếc Tolyno Hoa Sen 135g - Đỏ","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ76","name":"Bánh hộp thiếc Tolyno Hoa Sen 135g - Vàng","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ77","name":"Bánh hộp thiếc Tolyno Hoa Sen 135g - Xanh tím","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ32","name":"Bánh hộp thiếc Tolyno 350g (Túi xách)","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ22","name":"Bánh hộp thiếc Tolyno Super Quality 450g (Túi xách)","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ34","name":"Bánh hộp thiếc Tolyno Super Quality 180g","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ81","name":"Bánh hộp thiếc Chữ Nhật Tolyno 350g - Đỏ (Túi xách)","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"BQ82","name":"Bánh hộp thiếc Chữ Nhật Tolyno 350g - Vàng (Túi xách)","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"","name":"Bánh hộp thiếc Chữ Nhật Tolyno 155g - Vàng","unit":"Thùng","cat":"Bánh hộp thiếc"},{"code":"","name":"Bánh hộp thiếc Chữ Nhật Tolyno 155g - Đỏ","unit":"Thùng","cat":"Bánh hộp thiếc"}];
+
+/* ====== CẤU HÌNH: dán URL Webhook n8n (Production) vào đây ====== */
+const WEBHOOK_URL = ""; // ví dụ: "https://xxx.app.n8n.cloud/webhook/bao-cao-sx"
+
+/* ---- Telegram ---- */
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+const inTG = !!(tg && tg.initData !== undefined && tg.platform && tg.platform !== 'unknown');
+if (tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
+function haptic(t){ try{ if(tg&&tg.HapticFeedback) tg.HapticFeedback.impactOccurred(t||'light'); }catch(e){} }
+
+/* ---- Đơn vị tính ---- */
+const UNITS = ['Thùng','Tải','Khay','Hộp','Lốc','Gói','Túi','Kg','Cái'];
+function mapUnit(u){ u=(u||'').toLowerCase();
+  if(u==='kg') return 'Kg'; if(u==='gói') return 'Gói'; if(u==='hộp') return 'Hộp';
+  if(u==='khay') return 'Khay'; return 'Thùng'; }
+
+/* ---- State ---- */
+const report = {};   // key -> {code,name,cat,q1,u1,q2,u2}
+let curCat = null, search = '';
+const catList = Array.from(new Set(CATALOG.map(p=>p.cat)));
+CATALOG.forEach((p,i)=> p._k = p.code || ('X'+i));
+const CAT_ICON = {'BTP – Khay':'🧺','BTP – Bánh các loại':'🍪','Gia vị (Bột canh)':'🧂',
+  'Lương khô':'🍫','Bánh hộp giấy':'📦','Bánh gói':'🛍️','Bánh hộp thiếc':'🥫'};
+
+/* ---- Helpers ---- */
+const $ = s => document.querySelector(s);
+const fmt = n => (Number.isInteger(n)? n : parseFloat(n.toFixed(3))).toLocaleString('vi-VN');
+const norm = s => (s||'').toString().toLowerCase().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m,k){ const t=$('#toast'); t.textContent=m; t.className='toast show'+(k?' '+k:'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',2200); }
+
+/* ---- Đồng hồ thời gian báo cáo ---- */
+function tick(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  $('#clk-t').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const wd=['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'][d.getDay()];
+  $('#clk-d').textContent=`${wd}, ${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+
+/* ---- View: danh mục ---- */
+function entriesInCat(c){ return CATALOG.filter(p=>p.cat===c && report[p._k]).length; }
+function renderCats(){
+  $('#cats').innerHTML = catList.map(c=>{
+    const tot=CATALOG.filter(p=>p.cat===c).length, done=entriesInCat(c);
+    return `<div class="cat" data-c="${esc(c)}">
+      <div class="ic">${CAT_ICON[c]||'📋'}</div>
+      <div class="ct"><div class="n">${esc(c)}</div><div class="s">${tot} sản phẩm</div></div>
+      ${done?`<div class="badge">đã nhập ${done}</div>`:''}
+      <div class="chev">›</div>
+    </div>`; }).join('');
+  $('#cats').querySelectorAll('.cat').forEach(el=>el.onclick=()=>{
+    curCat=el.dataset.c; search=''; $('#q').value=''; $('#clr').style.display='none';
+    haptic('light'); openList();
+  });
+}
+function showView(v){
+  $('#view-cats').style.display = v==='cats'?'block':'none';
+  $('#view-list').style.display = v==='list'?'block':'none';
+  window.scrollTo(0,0);
+}
+function openList(){ $('#lm-cat').textContent=curCat; renderList(); showView('list'); }
+
+/* ---- View: sản phẩm ---- */
+function prods(){
+  const q=norm(search);
+  return CATALOG.filter(p=>p.cat===curCat && (!q || norm(p.name).includes(q) || norm(p.code).includes(q)));
+}
+function entryText(e){ return `${fmt(e.q1)} ${e.u1}` + (e.q2>0?` + ${fmt(e.q2)} ${e.u2}`:''); }
+function renderList(){
+  const items=prods(); const list=$('#list');
+  if(!items.length){ list.innerHTML=`<div class="empty"><div class="big">🔍</div>Không tìm thấy sản phẩm.<br>Thử từ khóa khác.</div>`; updateBar(); return; }
+  list.innerHTML=items.map(p=>{
+    const e=report[p._k];
+    return `<div class="row ${e?'active':''}" data-k="${p._k}">
+      <div class="r-info">
+        <div class="r-name">${esc(p.name)}</div>
+        <div class="r-sub">
+          ${p.code?`<span class="code">${esc(p.code)}</span>`:''}
+          ${e?`<span class="r-val">✓ ${esc(entryText(e))}</span>`:`<span>ĐVT gốc: ${esc(p.unit||'—')}</span>`}
+        </div>
+      </div>
+      <div class="r-act">${e?'✎':'+'}</div>
+    </div>`; }).join('');
+  list.querySelectorAll('.row').forEach(r=>r.onclick=()=>openEntry(r.dataset.k));
+  updateBar();
+}
+
+/* ---- Bottom bar ---- */
+function selected(){ return CATALOG.filter(p=>report[p._k]); }
+function updateBar(){
+  const n=selected().length;
+  $('#lm-sel').textContent=`Đã nhập: ${entriesInCat(curCat)}`;
+  const btn=$('#open-review'); btn.disabled=n===0;
+  $('#bar-a').textContent = n? `${n} mặt hàng đã nhập` : 'Chưa nhập sản lượng';
+  $('#bar-b').textContent = n? 'Bấm Xem phiếu để kiểm tra & gửi' : 'Chọn loại báo cáo để bắt đầu';
+}
+
+/* ====== ENTRY SHEET + BÀN PHÍM SỐ ====== */
+let ev=null;  // {p, s1,u1, s2,u2, has2, active}
+function openEntry(key){
+  const p=CATALOG.find(x=>x._k===key); if(!p) return;
+  const e=report[key];
+  ev={ p, s1: e? numToStr(e.q1):'', u1: e? e.u1: mapUnit(p.unit),
+       s2: e&&e.q2>0? numToStr(e.q2):'', u2: e&&e.u2? e.u2: pickU2(mapUnit(p.unit)),
+       has2: !!(e&&e.q2>0), active:1 };
+  $('#ent-code').textContent = p.code? p.code+' · '+p.cat : p.cat;
+  $('#ent-name').textContent = p.name;
+  buildUnitSelect($('#us1'), ev.u1); buildUnitSelect($('#us2'), ev.u2);
+  $('#ul2').style.display = ev.has2?'flex':'none';
+  $('#add2').style.display = ev.has2?'none':'block';
+  setActive(1); paintVals();
+  haptic('light'); $('#ov-ent').classList.add('show');
+}
+function pickU2(u1){ return UNITS.find(u=>u!==u1) || 'Gói'; }
+function numToStr(n){ return String(n).replace('.',','); }
+function strToNum(s){ if(!s) return 0; const n=parseFloat(s.replace(',','.')); return isNaN(n)?0:n; }
+function buildUnitSelect(sel,val){
+  sel.innerHTML=UNITS.map(u=>`<option ${u===val?'selected':''}>${u}</option>`).join('');
+}
+function setActive(f){ ev.active=f;
+  $('#ul1').classList.toggle('act',f===1); $('#ul2').classList.toggle('act',f===2); }
+function paintVals(){
+  paintOne($('#uv1'), ev.s1, ev.active===1);
+  paintOne($('#uv2'), ev.s2, ev.active===2);
+}
+function paintOne(el,s,active){
+  if(s==='') el.innerHTML=`<span class="ph">0</span>`+(active?'<span class="car"></span>':'');
+  else el.innerHTML=esc(s)+(active?'<span class="car"></span>':'');
+}
+function press(ch){
+  let key = ev.active===1?'s1':'s2'; let s=ev[key];
+  if(ch==='del'){ s=s.slice(0,-1); }
+  else if(ch===','){ if(!s) s='0,'; else if(!s.includes(',')) s+=','; }
+  else { if(s==='0') s=ch; else if(s.length<9) s+=ch; }
+  ev[key]=s; paintVals(); haptic('light');
+}
+function buildPad(){
+  const keys=['1','2','3','4','5','6','7','8','9',',','0','del'];
+  $('#pad').innerHTML=keys.map(k=>{
+    if(k==='del') return `<button class="k-del" data-k="del">⌫</button>`;
+    if(k===',') return `<button class="k-comma" data-k=",">,</button>`;
+    return `<button data-k="${k}">${k}</button>`;
+  }).join('');
+  $('#pad').querySelectorAll('button').forEach(b=>b.onclick=()=>press(b.dataset.k));
+}
+function saveEntry(){
+  const q1=strToNum(ev.s1), q2=ev.has2?strToNum(ev.s2):0;
+  const u1=$('#us1').value, u2=$('#us2').value;
+  if(q1<=0 && q2<=0){ delete report[ev.p._k]; closeEntry(); renderList(); toast('Đã bỏ sản phẩm'); return; }
+  report[ev.p._k]={ code:ev.p.code, name:ev.p.name, cat:ev.p.cat,
+    q1: q1>0?q1:q2, u1: q1>0?u1:u2,
+    q2: (q1>0&&q2>0)?q2:0, u2: (q1>0&&q2>0)?u2:'' };
+  if(tg&&tg.HapticFeedback){ try{tg.HapticFeedback.notificationOccurred('success')}catch(e){} }
+  closeEntry(); renderList(); toast('Đã lưu: '+entryText(report[ev.p._k]),'ok');
+}
+function closeEntry(){ $('#ov-ent').classList.remove('show'); }
+
+/* ====== REVIEW SHEET ====== */
+function openReview(){
+  const sel=selected(); if(!sel.length) return;
+  const now=new Date(), p=n=>String(n).padStart(2,'0');
+  $('#slip-meta').innerHTML=`
+    <div><b>Thời gian báo cáo:</b> ${p(now.getHours())}:${p(now.getMinutes())} · ${p(now.getDate())}/${p(now.getMonth()+1)}/${now.getFullYear()}</div>
+    <div><b>Người báo cáo:</b> ${esc(reporterName()||'(Telegram)')}</div>`;
+  // gom theo nhóm
+  const byCat={}; sel.forEach(p=>{ (byCat[p.cat]=byCat[p.cat]||[]).push(p); });
+  let html='';
+  Object.keys(byCat).forEach(c=>{
+    html+=`<div class="si" style="background:#FBF3E4;font-weight:800;font-size:11.5px;
+      letter-spacing:.5px;color:var(--amber-deep);padding:6px 14px">${esc(c.toUpperCase())}</div>`;
+    byCat[c].forEach(p=>{ const e=report[p._k];
+      html+=`<div class="si" data-k="${p._k}">
+        <div class="si-n">${esc(p.name)} ${p.code?`<span class="c">[${esc(p.code)}]</span>`:''}</div>
+        <div class="si-q">${esc(entryText(e))}</div>
+        <button class="si-rm" aria-label="Xóa">×</button></div>`; });
+  });
+  $('#slip-body').innerHTML=html;
+  $('#slip-body').querySelectorAll('.si-rm').forEach(b=>b.onclick=()=>{
+    const k=b.closest('.si').dataset.k; delete report[k]; haptic('light'); renderList();
+    if(!selected().length){ closeReview(); } else openReview();
+  });
+  $('#slip-tot').textContent=`${sel.length} mặt hàng`;
+  $('#ov-rev').classList.add('show');
+}
+function closeReview(){ $('#ov-rev').classList.remove('show'); }
+
+/* ====== Gửi ====== */
+function reporterName(){
+  if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user){
+    const u=tg.initDataUnsafe.user; return [u.first_name,u.last_name].filter(Boolean).join(' ');
+  } return '';
+}
+function buildPayload(){
+  return { type:'bao_cao_san_xuat', reported_at:new Date().toISOString(),
+    reporter:reporterName(),
+    tg_user_id:(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)?tg.initDataUnsafe.user.id:null,
+    note:$('#f-note').value.trim(),
+    items:selected().map(p=>{const e=report[p._k];return {
+      code:e.code||'', name:e.name, cat:e.cat,
+      qty1:e.q1, unit1:e.u1, qty2:e.q2||0, unit2:e.u2||'' };}) };
+}
+function buildText(d){
+  const t=new Date(d.reported_at),p=n=>String(n).padStart(2,'0');
+  const L=['📋 BÁO CÁO SẢN XUẤT',
+    `🕒 ${p(t.getHours())}:${p(t.getMinutes())} · ${p(t.getDate())}/${p(t.getMonth()+1)}/${t.getFullYear()}`,
+    `👤 ${d.reporter||'(Telegram)'}`,'───────────'];
+  d.items.forEach((it,i)=>{ const u2=it.qty2>0?` + ${fmt(it.qty2)} ${it.unit2}`:'';
+    L.push(`${i+1}. ${it.name}${it.code?` [${it.code}]`:''}: ${fmt(it.qty1)} ${it.unit1}${u2}`); });
+  L.push('───────────',`Tổng: ${d.items.length} mặt hàng`);
+  if(d.note) L.push(`📝 ${d.note}`);
+  return L.join('\n');
+}
+function send(){
+  const d=buildPayload(); d.text=buildText(d);
+  d.init_data=(tg&&tg.initData)?tg.initData:'';      // để n8n xác thực nếu cần
+  const json=JSON.stringify(d);
+  const btn=$('#send');
+
+  if(WEBHOOK_URL){
+    btn.disabled=true; btn.textContent='Đang gửi...';
+    fetch(WEBHOOK_URL,{ method:'POST', headers:{'Content-Type':'application/json'}, body:json })
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r; })
+      .then(()=>{
+        if(tg&&tg.HapticFeedback){ try{tg.HapticFeedback.notificationOccurred('success')}catch(e){} }
+        toast('✓ Đã gửi báo cáo lên nhóm','ok');
+        for(const k in report) delete report[k];   // xóa phiếu sau khi gửi
+        $('#f-note').value=''; closeReview(); renderCats(); showView('cats'); updateBar();
+      })
+      .catch(e=>{ toast('Gửi lỗi: '+e.message+' (kiểm tra URL/CORS)','err'); })
+      .finally(()=>{ btn.disabled=false; btn.textContent='Gửi báo cáo'; });
+    return;
+  }
+
+  // Chưa cấu hình webhook: fallback
+  if(inTG){
+    if(json.length>4000){ toast('Phiếu quá dài — tách 2 lần gửi','err'); return; }
+    try{ if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); tg.sendData(json); }
+    catch(e){ toast('Lỗi gửi: '+e.message,'err'); }
+  }else{
+    navigator.clipboard?.writeText(d.text).then(
+      ()=>toast('Đã copy nội dung phiếu (xem thử)','ok'),
+      ()=>toast('Chưa cấu hình WEBHOOK_URL','err'));
+    console.log('PAYLOAD:',json); console.log(d.text); closeReview();
+  }
+}
+
+/* ---- Init ---- */
+function init(){
+  tick(); setInterval(tick,1000);
+  renderCats(); buildPad(); updateBar();
+  // reporter
+  const nm=reporterName();
+  if(nm){ $('#who-nm').textContent=nm; $('#av').textContent=nm.trim().charAt(0).toUpperCase()||'?';
+    $('#hsub').textContent='Hải Châu · '+(tg.platform||'Telegram'); }
+  // nav
+  $('#back').onclick=()=>{ haptic('light'); renderCats(); showView('cats'); };
+  $('#q').oninput=e=>{ search=e.target.value; $('#clr').style.display=search?'block':'none'; renderList(); };
+  $('#clr').onclick=()=>{ search=''; $('#q').value=''; $('#clr').style.display='none'; renderList(); };
+  // entry sheet
+  $('#ul1').addEventListener('click',()=>{ setActive(1); paintVals(); });
+  $('#ul2').addEventListener('click',e=>{ if(e.target.closest('select')||e.target.closest('.rm2'))return; setActive(2);paintVals(); });
+  $('#us1').onchange=e=>{ev.u1=e.target.value;}; $('#us2').onchange=e=>{ev.u2=e.target.value;};
+  $('#add2').onclick=()=>{ ev.has2=true; $('#ul2').style.display='flex'; $('#add2').style.display='none'; setActive(2); paintVals(); };
+  $('#rm2').onclick=()=>{ ev.has2=false; ev.s2=''; $('#ul2').style.display='none'; $('#add2').style.display='block'; setActive(1); paintVals(); };
+  $('#ent-clear').onclick=()=>{ const k=ev.active===1?'s1':'s2'; ev[k]=''; paintVals(); };
+  $('#ent-save').onclick=saveEntry;
+  $('#ent-x').onclick=closeEntry;
+  $('#ov-ent').onclick=e=>{ if(e.target.id==='ov-ent') closeEntry(); };
+  // review
+  $('#open-review').onclick=()=>{ haptic('medium'); openReview(); };
+  $('#rev-x').onclick=closeReview; $('#rev-back').onclick=closeReview;
+  $('#ov-rev').onclick=e=>{ if(e.target.id==='ov-rev') closeReview(); };
+  $('#send').onclick=send;
+  if(inTG && tg.MainButton){ tg.MainButton.setText('XEM PHIẾU & GỬI');
+    tg.MainButton.onClick(()=>{ selected().length?openReview():toast('Chưa nhập sản lượng','err'); }); }
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
