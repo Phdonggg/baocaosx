@@ -520,7 +520,7 @@ function buildText(d){
     `🕒 Thời gian: ${p(t.getHours())}:${p(t.getMinutes())} · ${p(t.getDate())}/${p(t.getMonth()+1)}/${t.getFullYear()}`,
     `👤 Người báo cáo: ${d.reporter||'(Telegram)'}`,'───────────'];
   d.items.forEach((it,i)=>{ const u2=it.qty2>0?` + ${fmt(it.qty2)} ${it.unit2}`:'';
-    L.push(`${i+1}. ${it.code?`[${it.code}] - `:''}${it.name}: ${fmt(it.qty1)} ${it.unit1}${u2}`); });
+    L.push(`${i+1}. ${it.code?`[${it.code}] - `:''}${it.name}\n     SL: ${fmt(it.qty1)} ${it.unit1}${u2}`); });
   L.push('───────────',`Tổng: ${d.items.length} mặt hàng`);
   if(d.note) L.push(`📝 ${d.note}`);
   return L.join('\n');
